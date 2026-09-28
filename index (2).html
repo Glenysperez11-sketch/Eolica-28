@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Interactivo de Energía Eólica</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-slider::-webkit-slider-thumb {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: #10B981;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col overflow-x-hidden">
+
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shadow-lg z-10">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-wind text-xl animate-pulse"></i>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                    EcoWind <span class="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">Simulador v2.5</span>
+                </h1>
+                <p class="text-xs text-slate-400">Simulación aerodinámica en tiempo real con HTML5 Canvas</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-3">
+            <button id="downloadBtn" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg shadow-lg shadow-emerald-900/40 transition-all flex items-center gap-2">
+                <i class="fa-solid fa-download"></i> Descargar Código HTML
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-4 gap-6 p-6 max-w-[1600px] w-full mx-auto">
+        
+        <!-- Sidebar Controls -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            
+            <!-- Turbine Control Panel -->
+            <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-800">
+                    <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-emerald-400"></i> Panel de Control
+                    </h2>
+                    <span id="statusBadge" class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">ACTIVO</span>
+                </div>
+
+                <!-- ON/OFF Toggle Button -->
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-slate-400 mb-2">Estado del Aerogenerador</label>
+                    <button id="powerToggleBtn" class="w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500">
+                        <i class="fa-solid fa-power-off"></i> <span>Apagar Aerogenerador</span>
+                    </button>
+                </div>
+
+                <!-- Wind Speed Slider -->
+                <div class="mb-5">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-wind text-sky-400"></i> Velocidad del Viento
+                        </label>
+                        <span id="windSpeedVal" class="text-sm font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">12.0 m/s</span>
+                    </div>
+                    <input id="windSpeedRange" type="range" min="0" max="25" step="0.5" value="12" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer custom-slider accent-emerald-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0 m/s (Calma)</span>
+                        <span>12 m/s (Óptimo)</span>
+                        <span>25 m/s (Tormenta)</span>
+                    </div>
+                </div>
+
+                <!-- Pitch Angle Slider -->
+                <div class="mb-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-xs font-medium text-slate-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-rotate text-amber-400"></i> Ángulo de Aspas (Pitch)
+                        </label>
+                        <span id="pitchAngleVal" class="text-sm font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">5.0°</span>
+                    </div>
+                    <input id="pitchAngleRange" type="range" min="0" max="45" step="1" value="5" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer custom-slider accent-amber-500">
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1">
+                        <span>0° (Máx. Captura)</span>
+                        <span>22° (Medio)</span>
+                        <span>45° (Freno aerodinámico)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-Time Metrics Card -->
+            <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow-xl flex-1 flex flex-col justify-between">
+                <div>
+                    <h2 class="text-sm font-semibold text-slate-200 mb-4 pb-3 border-b border-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-gauge-high text-emerald-400"></i> Telemetría en Vivo
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <!-- Power Output -->
+                        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-bolt text-yellow-400"></i> Potencia Generada</span>
+                                <span id="powerOutput" class="text-lg font-bold text-yellow-400">0.0 kW</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden mt-2">
+                                <div id="powerBar" class="bg-gradient-to-r from-yellow-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <!-- RPM -->
+                        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60 flex items-center justify-between">
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-rotate-right text-sky-400"></i> Velocidad Rotor</span>
+                            <span id="rpmVal" class="text-sm font-bold text-sky-400">0.0 RPM</span>
+                        </div>
+
+                        <!-- Efficiency -->
+                        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60 flex items-center justify-between">
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-chart-line text-emerald-400"></i> Coeficiente Cp</span>
+                            <span id="efficiencyVal" class="text-sm font-bold text-emerald-400">0.0%</span>
+                        </div>
+
+                        <!-- Total Energy Generated Counter -->
+                        <div class="bg-slate-950/60 p-3.5 rounded-xl border border-slate-800/60 flex items-center justify-between">
+                            <span class="text-xs text-slate-400 flex items-center gap-1.5"><i class="fa-solid fa-battery-full text-emerald-400"></i> Energía Acumulada</span>
+                            <span id="totalEnergy" class="text-sm font-bold text-emerald-300">0.00 kWh</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-800/80 text-[11px] text-slate-500 text-center">
+                    Modelo basado en Ley de Betz y aerodinámica de palas.
+                </div>
+            </div>
+
+        </div>
+
+        <div class="lg:col-span-3 flex flex-col gap-6">
+            
+            <!-- Canvas Simulation Container -->
+            <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-4 shadow-xl relative overflow-hidden flex flex-col">
+                <div class="flex items-center justify-between mb-3 px-2">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500 inline-block animate-ping"></span>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Vista Panorámica del Parque Eólico</h3>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs text-slate-400">
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400 inline-block"></span> Partículas de Viento</span>
+                        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span> Flujo Energético</span>
+                    </div>
+                </div>
+
+                <div class="relative w-full rounded-xl overflow-hidden border border-slate-800 shadow-inner bg-slate-950">
+                    <canvas id="simCanvas" class="w-full h-[450px] block cursor-crosshair"></canvas>
+                    
+                    <!-- Overlay information badge on canvas -->
+                    <div id="canvasNotification" class="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-300 flex items-center gap-2 shadow-lg transition-opacity duration-300">
+                        <i class="fa-solid fa-info-circle text-emerald-400"></i>
+                        <span>Simulación en marcha. Modifica el viento o el ángulo de aspa.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Power Chart Container -->
+            <div class="bg-slate-900/80 backdrop-blur-md border border-slate-800/80 rounded-2xl p-5 shadow-xl">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                        <i class="fa-solid fa-wave-square text-emerald-400"></i> Historial de Potencia Generada (kW)
+                    </h3>
+                    <span class="text-xs text-slate-500">Actualización en tiempo real</span>
+                </div>
+                <div class="relative w-full h-32 rounded-xl bg-slate-950 border border-slate-800 overflow-hidden">
+                    <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <script>
+        // --- Simulation State & Physics Variables ---
+        const state = {
+            isRunning: true,
+            windSpeed: 12.0,       // m/s
+            pitchAngle: 5.0,       // degrees
+            rpm: 0.0,              // Rotations per minute
+            maxRpm: 45.0,          // Max RPM at ideal wind
+            power: 0.0,            // kW
+            maxPower: 50.0,        // kW nominal capacity
+            efficiency: 0.0,       // %
+            totalEnergy: 0.0,      // kWh
+            bladeAngle: 0.0,       // Current rotation angle in radians
+            particles: [],
+            powerHistory: new Array(60).fill(0),
+            timeCounter: 0
+        };
+
+        // --- DOM Elements ---
+        const powerToggleBtn = document.getElementById('powerToggleBtn');
+        const statusBadge = document.getElementById('statusBadge');
+        const windSpeedRange = document.getElementById('windSpeedRange');
+        const windSpeedVal = document.getElementById('windSpeedVal');
+        const pitchAngleRange = document.getElementById('pitchAngleRange');
+        const pitchAngleVal = document.getElementById('pitchAngleVal');
+        const powerOutput = document.getElementById('powerOutput');
+        const powerBar = document.getElementById('powerBar');
+        const rpmVal = document.getElementById('rpmVal');
+        const efficiencyVal = document.getElementById('efficiencyVal');
+        const totalEnergy = document.getElementById('totalEnergy');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        const simCanvas = document.getElementById('simCanvas');
+        const ctx = simCanvas.getContext('2d');
+        const graphCanvas = document.getElementById('graphCanvas');
+        const gCtx = graphCanvas.getContext('2d');
+
+        // Setup Canvas Resolution
+        function resizeCanvases() {
+            const dpr = window.devicePixelRatio || 1;
+            
+            simCanvas.width = simCanvas.clientWidth * dpr;
+            simCanvas.height = 450 * dpr;
+            ctx.scale(dpr, dpr);
+
+            graphCanvas.width = graphCanvas.clientWidth * dpr;
+            graphCanvas.height = 128 * dpr;
+            gCtx.scale(dpr, dpr);
+        }
+        window.addEventListener('resize', resizeCanvases);
+
+        // --- Event Listeners ---
+        powerToggleBtn.addEventListener('click', () => {
+            state.isRunning = !state.isRunning;
+            if (state.isRunning) {
+                powerToggleBtn.className = "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30 hover:bg-emerald-500";
+                powerToggleBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Apagar Aerogenerador</span>';
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+                statusBadge.textContent = "ACTIVO";
+            } else {
+                powerToggleBtn.className = "w-full py-3 px-4 rounded-xl font-semibold text-sm transition-all flex items-center justify-center gap-2 bg-rose-600 text-white shadow-lg shadow-rose-900/30 hover:bg-rose-500";
+                powerToggleBtn.innerHTML = '<i class="fa-solid fa-power-off"></i> <span>Encender Aerogenerador</span>';
+                statusBadge.className = "px-2.5 py-1 rounded-full text-xs font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30";
+                statusBadge.textContent = "APAGADO";
+            }
+        });
+
+        windSpeedRange.addEventListener('input', (e) => {
+            state.windSpeed = parseFloat(e.target.value);
+            windSpeedVal.textContent = state.windSpeed.toFixed(1) + " m/s";
+        });
+
+        pitchAngleRange.addEventListener('input', (e) => {
+            state.pitchAngle = parseFloat(e.target.value);
+            pitchAngleVal.textContent = state.pitchAngle.toFixed(1) + "°";
+        });
+
+        // --- Particle System for Wind ---
+        class Particle {
+            constructor() {
+                this.reset();
+            }
+            reset() {
+                this.x = 0;
+                this.y = Math.random() * (simCanvas.clientHeight - 100);
+                this.size = Math.random() * 2 + 1;
+                this.speed = (state.windSpeed * 3) + Math.random() * 2;
+                this.alpha = Math.random() * 0.5 + 0.3;
+            }
+            update() {
+                let currentWind = state.isRunning ? state.windSpeed : 0;
+                this.speed = (currentWind * 3) + 1;
+                this.x += this.speed;
+
+                // Check collision/interaction with turbine rotor center
+                const turbineX = simCanvas.clientWidth * 0.45;
+                const turbineY = simCanvas.clientHeight * 0.35;
+                const rotorRadius = 110;
+
+                // Slow down and deflect particles slightly if passing through rotor disc when active
+                if (state.isRunning && this.x > turbineX - 30 && this.x < turbineX + 30 && Math.abs(this.y - turbineY) < rotorRadius) {
+                    this.speed *= 0.6; // Wake effect behind turbine
+                }
+
+                if (this.x > simCanvas.clientWidth) {
+                    this.reset();
+                    this.x = 0;
+                }
+            }
+            draw() {
+                ctx.fillStyle = `rgba(56, 189, 248, ${this.alpha})`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Initialize particles
+        function initParticles() {
+            state.particles = [];
+            const count = 120;
+            for (let i = 0; i < count; i++) {
+                let p = new Particle();
+                p.x = Math.random() * simCanvas.clientWidth;
+                state.particles.push(p);
+            }
+        }
+
+        // --- Physics Calculation ---
+        function updatePhysics(dt) {
+            if (!state.isRunning) {
+                state.rpm = Math.max(0, state.rpm - 1.5);
+                state.power = 0;
+                state.efficiency = 0;
+                state.bladeAngle += (state.rpm * Math.PI / 30) * dt;
+                return;
+            }
+
+            // Aerodynamic efficiency calculation based on pitch angle and wind speed
+            // Optimal pitch is around 2° to 5°. Higher pitch drops efficiency (aerodynamic braking).
+            let optimalPitch = 4.0;
+            let pitchDiff = Math.abs(state.pitchAngle - optimalPitch);
+            let pitchFactor = Math.max(0, 1 - (pitchDiff / 40));
+
+            // Cut-in wind speed: 3 m/s, Cut-out wind speed: 25 m/s
+            let windFactor = 0;
+            if (state.windSpeed >= 3 && state.windSpeed <= 25) {
+                // Cubic relationship with wind speed up to rated speed (12 m/s)
+                let normalizedWind = Math.min(state.windSpeed, 14) / 14;
+                windFactor = Math.pow(normalizedWind, 2.5);
+                if (state.windSpeed > 14) {
+                    // Furling/pitch regulation at high winds
+                    windFactor = Math.max(0.4, 1 - ((state.windSpeed - 14) / 20));
+                }
+            }
+
+            // Target RPM proportional to wind speed and pitch factor
+            let targetRpm = state.windSpeed * 2.2 * pitchFactor;
+            state.rpm += (targetRpm - state.rpm) * 0.1; // Smooth transition
+
+            // Efficiency Cp estimation
+            state.efficiency = Math.min(48.5, Math.max(0, 48.5 * pitchFactor * (state.windSpeed > 3 ? 1 : 0)));
+
+            // Power output in kW (proportional to v^3 * Cp)
+            let rawPower = (0.5 * 1.225 * Math.PI * Math.pow(110, 2) * Math.pow(state.windSpeed, 3) * (state.efficiency / 100)) / 100000;
+            state.power = Math.min(state.maxPower, Math.max(0, rawPower));
+
+            // Accumulate total energy (kWh)
+            state.totalEnergy += (state.power * (dt / 3600));
+
+            // Rotate blades
+            let angularSpeed = (state.rpm * Math.PI / 30); // rad/s
+            state.bladeAngle += angularSpeed * dt;
+        }
+
+        // --- Drawing Functions on Canvas ---
+        function drawScene() {
+            const width = simCanvas.clientWidth;
+            const height = simCanvas.clientHeight;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Sky Gradient Background
+            let skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+            skyGrad.addColorStop(0, '#020617');
+            skyGrad.addColorStop(0.6, '#0f172a');
+            skyGrad.addColorStop(1, '#1e293b');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, width, height);
+
+            // 2. Draw Background Clouds
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+            let cloudOffset = (state.timeCounter * state.windSpeed * 0.5) % (width + 200) - 100;
+            ctx.beginPath();
+            ctx.arc(cloudOffset, 80, 40, 0, Math.PI * 2);
+            ctx.arc(cloudOffset + 30, 70, 50, 0, Math.PI * 2);
+            ctx.arc(cloudOffset + 70, 85, 35, 0, Math.PI * 2);
+            ctx.fill();
+
+            let cloudOffset2 = ((state.timeCounter * state.windSpeed * 0.3) + 350) % (width + 300) - 150;
+            ctx.beginPath();
+            ctx.arc(cloudOffset2, 130, 30, 0, Math.PI * 2);
+            ctx.arc(cloudOffset2 + 25, 120, 40, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 3. Draw Terrain / Hills
+            ctx.fillStyle = '#064e3b';
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            ctx.lineTo(0, height - 100);
+            ctx.quadraticCurveTo(width * 0.3, height - 160, width * 0.6, height - 110);
+            ctx.quadraticCurveTo(width * 0.85, height - 70, width, height - 120);
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+
+            ctx.fillStyle = '#022c22';
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            ctx.lineTo(0, height - 60);
+            ctx.quadraticCurveTo(width * 0.4, height - 90, width, height - 50);
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. Update and Draw Wind Particles
+            state.particles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // 5. Draw Wind Turbine Structure
+            const turbineX = width * 0.45;
+            const turbineY = height - 110;
+            const towerHeight = 220;
+            const baseWidth = 24;
+            const topWidth = 12;
+
+            // Tower Foundation / Concrete base
+            ctx.fillStyle = '#334155';
+            ctx.fillRect(turbineX - 25, turbineY, 50, 15);
+
+            // Tower (Tapered Cylinder)
+            let towerGrad = ctx.createLinearGradient(turbineX - baseWidth/2, 0, turbineX + baseWidth/2, 0);
+            towerGrad.addColorStop(0, '#64748b');
+            towerGrad.addColorStop(0.5, '#cbd5e1');
+            towerGrad.addColorStop(1, '#475569');
+            
+            ctx.fillStyle = towerGrad;
+            ctx.beginPath();
+            ctx.moveTo(turbineX - baseWidth/2, turbineY);
+            ctx.lineTo(turbineX - topWidth/2, turbineY - towerHeight);
+            ctx.lineTo(turbineX + topWidth/2, turbineY - towerHeight);
+            ctx.lineTo(turbineX + baseWidth/2, turbineY);
+            ctx.closePath();
+            ctx.fill();
+
+            // Nacelle (Generator housing)
+            const nacelleX = turbineX;
+            const nacelleY = turbineY - towerHeight;
+            ctx.fillStyle = '#f8fafc';
+            ctx.beginPath();
+            ctx.roundRect(nacelleX - 40, nacelleY - 18, 70, 32, [8]);
+            ctx.fill();
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            // Wind Anemometer on Nacelle
+            ctx.strokeStyle = '#cbd5e1';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(nacelleX - 10, nacelleY - 18);
+            ctx.lineTo(nacelleX - 10, nacelleY - 28);
+            ctx.stroke();
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(nacelleX - 15, nacelleY - 30, 10, 4);
+
+            // 6. Draw Rotating Blades (3 Blades with Rotor Hub)
+            ctx.save();
+            ctx.translate(nacelleX - 5, nacelleY);
+            ctx.rotate(state.bladeAngle);
+
+            const bladeLength = 110;
+            for (let i = 0; i < 3; i++) {
+                ctx.save();
+                ctx.rotate((i * 2 * Math.PI) / 3);
+
+                // Blade shape with pitch angle simulation effect
+                let pitchEffect = (state.pitchAngle / 45) * 0.2;
+                ctx.scale(1 - pitchEffect, 1);
+
+                let bladeGrad = ctx.createLinearGradient(0, 0, 0, -bladeLength);
+                bladeGrad.addColorStop(0, '#f1f5f9');
+                bladeGrad.addColorStop(0.8, '#e2e8f0');
+                bladeGrad.addColorStop(1, '#cbd5e1');
+
+                ctx.fillStyle = bladeGrad;
+                ctx.beginPath();
+                ctx.moveTo(-6, 0);
+                ctx.lineTo(-2, -bladeLength * 0.85);
+                ctx.lineTo(0, -bladeLength);
+                ctx.lineTo(2, -bladeLength * 0.85);
+                ctx.lineTo(6, 0);
+                ctx.closePath();
+                ctx.fill();
+                ctx.strokeStyle = '#94a3b8';
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            // Rotor Hub Center Cone
+            ctx.fillStyle = '#e2e8f0';
+            ctx.beginPath();
+            ctx.arc(0, 0, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#64748b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+
+            // 7. Draw Substation / Energy Battery Storage on the ground (right side)
+            const subX = width * 0.8;
+            const subY = height - 85;
+
+            // Battery / Substation Building
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(subX - 35, subY - 40, 70, 45);
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(subX - 35, subY - 40, 70, 45);
+
+            // Solar/Grid indicator lights & Panel
+            ctx.fillStyle = state.isRunning && state.power > 0 ? '#10b981' : '#ef4444';
+            ctx.beginPath();
+            ctx.arc(subX, subY - 20, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Power transmission lines (Tower to Substation)
+            if (state.isRunning && state.power > 0) {
+                ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.lineDashOffset = -(state.timeCounter * 5) % 12;
+                ctx.beginPath();
+                ctx.moveTo(turbineX, turbineY);
+                ctx.quadraticCurveTo(width * 0.62, height - 120, subX, subY - 40);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            }
+        }
+
+        // --- Draw Real-Time Power Graph ---
+        function drawGraph() {
+            const width = graphCanvas.clientWidth;
+            const height = graphCanvas.clientHeight;
+
+            gCtx.clearRect(0, 0, width, height);
+
+            // Grid lines
+            gCtx.strokeStyle = 'rgba(51, 65, 85, 0.4)';
+            gCtx.lineWidth = 1;
+            for (let i = 1; i < 4; i++) {
+                let y = (height / 4) * i;
+                gCtx.beginPath();
+                gCtx.moveTo(0, y);
+                gCtx.lineTo(width, y);
+                gCtx.stroke();
+            }
+
+            // Draw Power Curve Line
+            const history = state.powerHistory;
+            if (history.length < 2) return;
+
+            gCtx.strokeStyle = '#10b981';
+            gCtx.lineWidth = 2.5;
+            gCtx.beginPath();
+
+            const step = width / (history.length - 1);
+            for (let i = 0; i < history.length; i++) {
+                let x = i * step;
+                let normalizedVal = history[i] / state.maxPower;
+                let y = height - (normalizedVal * (height - 15) + 10);
+                if (i === 0) gCtx.moveTo(x, y);
+                else gCtx.lineTo(x, y);
+            }
+            gCtx.stroke();
+
+            // Gradient fill under the graph line
+            gCtx.lineTo(width, height);
+            gCtx.lineTo(0, height);
+            gCtx.closePath();
+            let grad = gCtx.createLinearGradient(0, 0, 0, height);
+            grad.addColorStop(0, 'rgba(16, 185, 129, 0.25)');
+            grad.addColorStop(1, 'rgba(16, 185, 129, 0.0)');
+            gCtx.fillStyle = grad;
+            gCtx.fill();
+        }
+
+        // --- Update UI Stats Readouts ---
+        function updateUI() {
+            powerOutput.textContent = state.power.toFixed(1) + " kW";
+            let powerPercentage = (state.power / state.maxPower) * 100;
+            powerBar.style.width = powerPercentage + "%";
+            rpmVal.textContent = state.rpm.toFixed(1) + " RPM";
+            efficiencyVal.textContent = state.efficiency.toFixed(1) + "%";
+            totalEnergy.textContent = state.totalEnergy.toFixed(2) + " kWh";
+        }
+
+        // --- Main Animation Loop ---
+        let lastTime = performance.now();
+        function loop(now) {
+            let dt = (now - lastTime) / 1000;
+            if (dt > 0.1) dt = 0.1; // Cap dt
+            lastTime = now;
+
+            state.timeCounter += dt;
+
+            updatePhysics(dt);
+
+            // Record power history every ~0.5s or frame count
+            if (Math.floor(state.timeCounter * 10) % 5 === 0) {
+                state.powerHistory.shift();
+                state.powerHistory.push(state.power);
+            }
+
+            drawScene();
+            drawGraph();
+            updateUI();
+
+            requestAnimationFrame(loop);
+        }
+
+        // --- Download Source Code Function ---
+        downloadBtn.addEventListener('click', () => {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'simulador_energia_eolica.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        // Initialize on load
+        window.onload = () => {
+            resizeCanvases();
+            initParticles();
+            requestAnimationFrame(loop);
+        };
+    </script>
+</body>
+</html>
